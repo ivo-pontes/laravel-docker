@@ -1,48 +1,73 @@
 version: "3.8"
 
 services:
-  app:
-    build:
-      args:
-        user: ivo
-        uid: 1000
-      context: ./
-      dockerfile: Dockerfile
-    image: especializati/laravel-app
-    restart: unless-stopped
-    working_dir: /var/www/
-    volumes:
-      - ./:/var/www/
-    networks:
-      - laravel-network
-  
-  ngnix:
-    image: nginx:alpine
-    restart: always
-    ports:
-      - 80:80
-      #- 443:443
-    volumes:
-      - ./:/var/wwww
-      - ./docker/nginx/:/etc/nginx/conf.d/
-    networks:
-      - laravel-network
+    # image project
+    app:
+        container_name: laravel-app
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: especializati/laravel9-app
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - ./:/var/www
+        depends_on: 
+            - redis
+        networks: 
+            - laravel-network
+    
+    # nginx
+    nginx:
+        container_name: nginx
+        image: nginx:alpine
+        restart: unless-stopped
+        ports: 
+            - "80:80"
+        volumes: 
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+        networks: 
+            - laravel-network
 
-  mysql:
-    image: mysql:5.7.22
-    restart: always
-    ports:
-     - 3307:3306
-    volumes:
-     - ./.docker/mysql:/var/lib/mysql
-    environment:
-      - MYSQL_DATABASE=${DB_DATABASE}
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
-      - MYSQL_USER=${DB_USERNAME}
-      - MYSQL_USER_PASSWORD=${DB_PASSWORD}
-    networks:
-      - laravel-network
+    # db mysql
+    mysql:
+        container_name: mysql
+        image: mysql:5.7.22
+        restart: unless-stopped
+        environment: 
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_USER: ${DB_USERNAME}
+        volumes: 
+            - ./.docker/mysql/dbdata:/var/lib/mysql
+        ports: 
+            - "3388:3306"
+        networks: 
+            - laravel-network
 
-networks:
-  laravel-network:
-    driver: bridge
+    # queue
+    queue:
+        container_name: queue
+        image: especializati/laravel9-app
+        restart: unless-stopped
+        command: "php artisan queue:work"
+        volumes: 
+            - ./:/var/www
+        depends_on: 
+            - redis
+            - app
+        networks: 
+            - laravel-network
+
+    # redis
+    redis:
+        container_name: redis
+        image: redis:latest
+        networks: 
+            - laravel-network
+
+networks: 
+    laravel-network:
+        driver: bridge
