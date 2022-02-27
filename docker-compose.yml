@@ -5,8 +5,11 @@ services:
     app:
         container_name: laravel-app
         build:
-            context: .
-            dockerfile: Dockerfile
+          context: .
+          dockerfile: Dockerfile    
+          args:
+            user: ivo
+            uid: 1000
         image: especializati/laravel9-app
         restart: unless-stopped
         working_dir: /var/www/
